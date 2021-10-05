@@ -26,7 +26,6 @@ frequency = 433272000
 def ConfigureD(d):
 	d.setMdmModulation(MOD_FORMAT_GFSK)
 	d.setFreq(frequency)
-	# d.makePktFLEN()
 	d.setMdmSyncWord(0x670b)
 	d.setMdmDRate(baudRate)
 	d.setMdmNumPreamble(MFMCFG1_NUM_PREAMBLE_6) # 48
@@ -36,6 +35,10 @@ def ConfigureD(d):
 	d.setMdmChanBW(300000)
 	d.setEnablePktCRC()
 	d.makePktVLEN()
+	d.setMdmDeviatn(50000)
+	# d.setEnablePktCRC()
+	# d.setEnablePktAppendStatus()
+	# d.RFlisten()
 
 print("")
 print("######################################################")
@@ -138,14 +141,20 @@ while True:
 				break
 			elif(x == 32):
 				print("unlocking")
-		y, t = d.RFrecv(timeout=1, blocksize=255)
+		y, t = d.RFrecv(timeout=15000, blocksize=255)
 		# sampleString=y.hex()
 		# lets find all the zero's
 		# showStatus();
 		# print("Received:  %s" % y.hex())
+		# print(len(y), y.hex())
 		try:
 			offset, message = messages.MessageFactory.CreateMessage(0,y)
-			print(f"{message} msgcrc({message.msgcrc:04X}) crc16({message.crc16:04X})")
+			if 0xD9AE240000000001 in [message.srcuid, message.dstuid]:
+				if message.validcrc:
+					print(f"{t:5.3f} {message} tlv({message.tlv.hex()})")
+				else:
+					print(f"*{t:5.3f} {message} msgcrc({message.msgcrc:04X}) crc16({message.crc16:04X})*")
+
 		except messages.IllegalMessage as ex:
 			print(ex, y)
 		# zeroPadding = [match[0] for match in re.findall(r'((0)\2{25,})', sampleString)]

@@ -42,6 +42,16 @@ class MessageBase:
         self.crcvalid = crcvalid
         self.msg = msg
 
+    # Define for those messages that don't have this field.
+    @property
+    def srcuid(self):
+        return 0
+
+    # Define for those messages that don't have this field.
+    @property
+    def dstuid(self):
+        return 0
+
     @property
     def Buffer(self) -> bytes:
         return self.data
@@ -62,6 +72,10 @@ class MessageBase:
     @property
     def crc16(self):
         return CRCCCITT.CalculateCrc16(self.data[:-2], 0xffff)
+    
+    @property
+    def validcrc(self):
+        return self.msgcrc == self.crc16
 
     @property
     def CRCValid(self):
@@ -79,8 +93,8 @@ class MessageBase:
     def __len__(self):
         return len(self.Buffer)
 
-    def __str__(self):
-        return f"{type(self).__name__: <28}: {self.Buffer.hex()}"
+    # def __str__(self):
+    #     return f"{type(self).__name__: <28}: {self.Buffer.hex()}"
 
 
 
@@ -97,6 +111,12 @@ class BeaconMessagePacket(MessageBase, ctypes.BigEndianStructure):
         # ("crc16", ctypes.c_uint16) # added by radio
     ]
 
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} src({self.srcuid:016X}) {self.Buffer.hex()}"
 
 class BroadcastMessagePacket(MessageBase, ctypes.BigEndianStructure):
     _pack_ = 1  # force byte alignment
@@ -108,9 +128,17 @@ class BroadcastMessagePacket(MessageBase, ctypes.BigEndianStructure):
         ("msgid", ctypes.c_uint8),
         ("addrctrl", ctypes.c_uint8),
         ("srcuid", ctypes.c_uint64),
-        ("opentag", ctypes.c_uint8 * 8),
+        ("opentag", ctypes.c_uint8 * 4),
         # ("crc16", ctypes.c_uint16) # added by radio
     ]
+
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} src({self.srcuid:016X}) {self.Buffer.hex()}"
+
 
 class DirectedMessagePacket(MessageBase, ctypes.BigEndianStructure):
     _pack_ = 1  # force byte alignment
@@ -127,6 +155,12 @@ class DirectedMessagePacket(MessageBase, ctypes.BigEndianStructure):
         # ("crc16", ctypes.c_uint16) # added by radio
     ]
 
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} src({self.srcuid:016X}) dst({self.dstuid:016X}) {self.Buffer.hex()}"
 
 class ShortBroadcastMessagePacket(MessageBase, ctypes.BigEndianStructure):
     _pack_ = 1  # force byte alignment
@@ -159,6 +193,12 @@ class ShortBroadcastMessagePacket(MessageBase, ctypes.BigEndianStructure):
         msglength=len(self)
         super().__init__(msg=self, msglength=msglength, srcuid=srcuid)
 
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} src({self.srcuid:016X}) {self.Buffer.hex()}"
 
 class UnknownMessagePacket(MessageBase, ctypes.BigEndianStructure):
     _pack_ = 1  # force byte alignment
@@ -183,6 +223,12 @@ class UnknownMessagePacket(MessageBase, ctypes.BigEndianStructure):
         self.length = len(self)
         super().__init__(msg=self, msglength=msglength)
 
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} dst({self.dstuid:016X}) {self.Buffer.hex()}"
 
 class ShortDirectedMessagePacket(ctypes.BigEndianStructure, MessageBase):
     _pack_ = 1  # force byte alignment
@@ -195,6 +241,12 @@ class ShortDirectedMessagePacket(ctypes.BigEndianStructure, MessageBase):
         # ("crc16", ctypes.c_uint16) # added by radio
     ]
 
+    @property
+    def tlv(self):
+        return self.data[ctypes.sizeof(self):-2]
+
+    def __str__(self):
+        return f"{type(self).__name__: <28}: {self.eirp} dst({self.dstuid:016X}) {self.Buffer.hex()}"
 
 class MessageFactory(ctypes.Structure):
     _pack_ = 1  # force byte alignment
